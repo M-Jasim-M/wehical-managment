@@ -166,8 +166,8 @@ console.log(req.body);
     const resetToken = jwt.sign({ userId: user._id }, 'yourSecretKey', { expiresIn: '10m' });
 
     // Set the reset token and expiration time in the user document
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 600000; // Token expires in 10 minutes
+    // user.resetPasswordToken = resetToken;
+    // user.resetPasswordExpires = Date.now() + 600000; // Token expires in 10 minutes
 
     // Save the user document with the reset token and reset link
     await user.save();
@@ -235,6 +235,44 @@ console.log(userId);
   }
 });
 
+// the login system compleated the api for the assisgn wehical
+
+// Fetch all users from the database
+app.get('/api/users', async (req, res) => {
+  try {
+    // Retrieve only client users from the database
+    const clientUsers = await User.find({ isAdmin: 'client' });
+
+    res.status(200).json(clientUsers);
+  } catch (error) {
+    console.error('Error fetching client users:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+// the api for delet users
+app.delete('/api/use/:id', async (req, res) => {
+  const userId = req.params.id;
+  console.log('Received user ID:', userId);
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ error: 'Invalid user ID' });
+  }
+
+  try {
+    const deletedUser = await User.findByIdAndDelete(userId);
+
+    if (!deletedUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json({ message: 'User deleted successfully', user: deletedUser });
+  } catch (error) {
+    console.error('Error deleting user:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 
 
