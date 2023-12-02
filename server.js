@@ -10,7 +10,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const { log } = require('console');
+const Wehical = require('./wehicalscheam');
+// const { log } = require('console');
 
 app.use(cors());
 app.use(express.json())
@@ -274,6 +275,100 @@ app.delete('/api/use/:id', async (req, res) => {
   }
 });
 
+// this is the api for the assign wehical 
+
+app.post('/api/assignwehical/:userId', async (req, res) => {
+  const { vehicleType, plateNumber } = req.body;
+  const userId = req.params.userId;
+console.log(userId);
+  try {
+    // Check if the user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Create a new wehical
+    const newWehical = new Wehical({
+      vehicleType,
+      plateNumber,
+      // ... other wehical fields
+    });
+
+    // Save the wehical to the database
+    await newWehical.save();
+
+    // Update the user with the wehical reference
+    user.wehical = newWehical._id;
+    await user.save();
+
+    res.status(200).json({ message: 'Wehical assigned successfully', user, wehical: newWehical });
+  } catch (error) {
+    console.error('Error assigning wehical:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// the api for the user and wehical data 
+
+app.get('/users-with-wehical', async (req, res) => {
+  try {
+    // Populate the 'wehical' field in the user data for clients
+    const clientsWithWehical = await User.find({ isAdmin: 'client' }).populate('wehical');
+
+    res.status(200).json(clientsWithWehical);
+  } catch (error) {
+    console.error('Error fetching clients with wehical data:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.delete('/api/delete-wehical-from-user/:userId', async (req, res) => {
+  const userId = req.params.userId;
+console.log(userId);
+  try {
+    // Find the user by ID
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if the user has an associated wehical
+    if (!user.wehical) {
+      return res.status(404).json({ error: 'User does not have an associated wehical' });
+    }
+
+    // Get the wehical ID
+    const wehicalId = user.wehical;
+
+    // Remove the reference from the user
+    user.wehical = undefined;
+    await user.save();
+
+    // Delete the wehical
+    await Wehical.findByIdAndDelete(wehicalId);
+
+    res.status(200).json({ message: 'Wehical deleted from user successfully', user });
+  } catch (error) {
+    console.error('Error deleting wehical from user:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// this is the api for the user 
+
+app.get('/api/userweh/:id', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    console.log("this is "+userId);
+    const user = await User.findById(userId).populate('wehical');
+    res.status(200).json(user);
+  } catch (error) {
+    console.error('Error fetching user data:', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 
 
