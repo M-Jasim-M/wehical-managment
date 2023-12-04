@@ -313,15 +313,16 @@ console.log(userId);
 
 app.get('/users-with-wehical', async (req, res) => {
   try {
-    // Populate the 'wehical' field in the user data for clients
-    const clientsWithWehical = await User.find({ isAdmin: 'client' }).populate('wehical');
+    // Populate the 'wehical' field in the user data for clients with assigned wehicals
+    const clientsWithWehical = await User.find({ isAdmin: 'client', wehical: { $exists: true, $ne: null } }).populate('wehical');
 
     res.status(200).json(clientsWithWehical);
   } catch (error) {
-    console.error('Error fetching clients with wehical data:', error.message);
+    console.error('Error fetching clients with assigned wehicals:', error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 app.delete('/api/delete-wehical-from-user/:userId', async (req, res) => {
   const userId = req.params.userId;
