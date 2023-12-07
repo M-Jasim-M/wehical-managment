@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const Wehical = require('./wehicalscheam');
+const FuelingDetail = require('./fuelingscheama');
 // const { log } = require('console');
 
 app.use(cors());
@@ -79,9 +80,9 @@ console.log(req.body);
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password, userType } = req.body;
-console.log(req.body);
-    // Find the user by email
-    const user = await User.findOne({ email });
+
+    // Find the user by email and populate the 'wehical' field
+    const user = await User.findOne({ email }).populate('wehical');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -95,9 +96,8 @@ console.log(req.body);
     // Create a JWT token
     const token = jwt.sign({ userId: user._id, userType }, 'yourSecretKey', { expiresIn: '1h' });
 
-    // Send both token and user data to the frontend
+    // Send both token and user data (with populated wehical) to the frontend
     res.status(200).json({ message: 'Login successful', token, user });
-console.log(token);
   } catch (error) {
     console.error('Error during login:', error.message);
     res.status(500).json({ error: 'Internal server error' });
@@ -359,18 +359,103 @@ console.log(userId);
 
 // this is the api for the user 
 
+// app.get('/api/userweh/:id', async (req, res) => {
+//   try {
+//     const userId = req.params.id;
+//     console.log("this is "+userId);
+//     const user = await User.findById(userId).populate('wehical');
+//     res.status(200).json(user);
+//   } catch (error) {
+//     console.error('Error fetching user data:', error.message);
+//     res.status(500).json({ error: 'Internal server error' });
+//   }
+// });
+// app.get('/api/userweh/:id', async (req, res) => {
+//     try {
+//         const userId = req.params.id;
+//         console.log("this is " + userId);
+
+//         // Populate both 'wehical' and 'fuelHistory' fields
+//         const user = await User.findById(userId).populate('wehical').populate('fuelHistory');
+
+//         res.status(200).json(user);
+//     } catch (error) {
+//         console.error('Error fetching user data:', error.message);
+//         res.status(500).json({ error: 'Internal server error' });
+//     }
+// });
+
 app.get('/api/userweh/:id', async (req, res) => {
+    try {
+        const userId = req.params.id;
+console.log(userId);
+        const user = await User.findById(userId)
+            .populate('wehical')
+            .populate('fuelHistory');
+
+        res.status(200).json(user);
+    } catch (error) {
+        console.error('Error fetching user data:', error.message);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+;
+
+
+// Assuming you have a route for adding fueling data
+app.post('/api/fueling/add-fueling/:userId', upload.single('image'), async (req, res) => {
+  const userId = req.params.userId;
+  console.log(userId);
+
   try {
-    const userId = req.params.id;
-    console.log("this is "+userId);
-    const user = await User.findById(userId).populate('wehical');
-    res.status(200).json(user);
+      const {
+          wehicalId, // Assuming you have the wehical ID from the frontend
+          stationName,
+          pricePerLiter,
+          totalLiters,
+          totalPrice,
+          location,
+          date,
+      } = req.body;
+console.log(req.body);
+      // Check if the user exists
+      const user = await User.findById(userId);
+      if (!user) {
+          return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Check if the wehical exists
+      const wehical = await Wehical.findById(wehicalId);
+      if (!wehical) {
+          return res.status(404).json({ error: 'Wehical not found' });
+      }
+
+      // Create a new FuelingDetail instance
+      const newFuelingDetail = new FuelingDetail({
+          user: userId, // Reference to the user
+          wehical: wehicalId, // Reference to the wehical
+          stationName,
+          pricePerLiter,
+          totalLiters,
+          totalPrice,
+          location,
+          date,
+          image: req.file.filename, // Save the filename in the database
+      });
+
+      // Save the new fueling detail
+      await newFuelingDetail.save();
+
+      // Update the user's fuelHistory array with the new FuelingDetail ID
+      user.fuelHistory.push(newFuelingDetail._id);
+      await user.save();
+
+      res.status(201).json({ message: 'Fueling data saved successfully', user });
   } catch (error) {
-    console.error('Error fetching user data:', error.message);
-    res.status(500).json({ error: 'Internal server error' });
+      console.error('Error saving fueling data:', error.message);
+      res.status(500).json({ error: 'Internal server error' });
   }
 });
-
 
 
 app.listen(port, () => {

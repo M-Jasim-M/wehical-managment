@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const wehicalSchema = require('./wehicalscheam');
+const fuelHistorySchema = require('./fuelingscheama'); // Import the fuel history schema
 
 const userSchema = new mongoose.Schema({
   name: String,
@@ -8,12 +9,16 @@ const userSchema = new mongoose.Schema({
   phoneNumber: String,
   image: String,
   isAdmin: { type: String, default: 'client' },
-  resetPasswordToken: String, // Add this line for reset password token
+  resetPasswordToken: String,
   resetPasswordExpires: Date,
   wehical: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Wehical',
   },
+  fuelHistory: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'FuelingDetail',
+  }],
 });
 
 const User = mongoose.model('User', userSchema);
